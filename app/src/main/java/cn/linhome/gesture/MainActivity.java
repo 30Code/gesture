@@ -1,4 +1,4 @@
-package com.fanwe.gesture;
+package cn.linhome.gesture;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;

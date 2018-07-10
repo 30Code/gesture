@@ -1,4 +1,4 @@
-package com.fanwe.gesture.test;
+package cn.linhome.gesture.test;
 
 import android.util.Log;
 import android.view.MotionEvent;
