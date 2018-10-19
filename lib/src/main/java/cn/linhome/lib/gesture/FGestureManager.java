@@ -1,70 +1,27 @@
-/*
- * Copyright (C) 2017 zhengjun, fanwe (http://www.fanwe.com)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package cn.linhome.lib.gesture;
 
-import android.content.Context;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
-import android.view.ViewConfiguration;
+
+import cn.linhome.lib.gesture.tag.FTagHolder;
+import cn.linhome.lib.gesture.tag.TagHolder;
+
 
 public class FGestureManager
 {
+    private final FTouchHelper mTouchHelper = new FTouchHelper();
+    private final FTagHolder mTagHolder = new FTagHolder();
+
     private VelocityTracker mVelocityTracker;
     private boolean mHasConsumeEvent;
-    private final FTagTouchHelper mTouchHelper = new FTagTouchHelper()
-    {
-        @Override
-        protected void onTagInterceptChanged(boolean tagIntercept)
-        {
-            super.onTagInterceptChanged(tagIntercept);
-            mCallback.onTagInterceptChanged(tagIntercept);
-        }
-
-        @Override
-        protected void onTagConsumeChanged(boolean tagConsume)
-        {
-            super.onTagConsumeChanged(tagConsume);
-            mCallback.onTagConsumeChanged(tagConsume);
-        }
-    };
 
     private final Callback mCallback;
 
     public FGestureManager(Callback callback)
     {
-        if (callback == null) throw new NullPointerException("callback is null");
+        if (callback == null)
+            throw new NullPointerException("callback is null");
         mCallback = callback;
-    }
-
-    private VelocityTracker getVelocityTracker()
-    {
-        if (mVelocityTracker == null)
-        {
-            mVelocityTracker = VelocityTracker.obtain();
-        }
-        return mVelocityTracker;
-    }
-
-    private void releaseVelocityTracker()
-    {
-        if (mVelocityTracker != null)
-        {
-            mVelocityTracker.recycle();
-            mVelocityTracker = null;
-        }
     }
 
     /**
@@ -78,56 +35,37 @@ public class FGestureManager
     }
 
     /**
-     * 一次完整的按下到离开的触摸过程中，是否有消费过事件
+     * 返回标识持有者
      *
      * @return
      */
-    public boolean hasConsumeEvent()
+    public TagHolder getTagHolder()
     {
-        return mHasConsumeEvent;
+        return mTagHolder;
     }
 
-    /**
-     * 当前是否处于消费中
-     *
-     * @return
-     */
-    public boolean isTagConsume()
+    private VelocityTracker getVelocityTracker()
     {
-        return mTouchHelper.isTagConsume();
+        if (mVelocityTracker == null)
+            mVelocityTracker = VelocityTracker.obtain();
+        return mVelocityTracker;
     }
 
-    /**
-     * 是否是点击事件
-     *
-     * @param event
-     * @param context
-     * @return
-     */
-    public boolean isClick(MotionEvent event, Context context)
+    private void releaseVelocityTracker()
     {
-        if (event.getAction() == MotionEvent.ACTION_UP)
+        if (mVelocityTracker != null)
         {
-            final long clickTimeout = ViewConfiguration.getPressedStateDuration() + ViewConfiguration.getTapTimeout();
-            final int touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
-
-            final long duration = event.getEventTime() - event.getDownTime();
-            final int dx = (int) getTouchHelper().getDeltaXFrom(FTagTouchHelper.EVENT_DOWN);
-            final int dy = (int) getTouchHelper().getDeltaYFrom(FTagTouchHelper.EVENT_DOWN);
-
-            if (duration < clickTimeout && dx < touchSlop && dy < touchSlop)
-            {
-                return true;
-            }
+            mVelocityTracker.recycle();
+            mVelocityTracker = null;
         }
-
-        return false;
     }
 
-    private void reset()
+    private void reset(MotionEvent event)
     {
-        releaseVelocityTracker();
+        mTagHolder.reset();
+        mCallback.onEventFinish(mHasConsumeEvent, getVelocityTracker(), event);
         mHasConsumeEvent = false;
+        releaseVelocityTracker();
     }
 
     /**
@@ -145,17 +83,15 @@ public class FGestureManager
         {
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-                reset();
+                reset(event);
                 break;
             default:
-                if (mCallback.shouldInterceptTouchEvent(event))
-                {
-                    mTouchHelper.setTagIntercept(true);
-                }
+                if (mCallback.shouldInterceptEvent(event))
+                    mTagHolder.setTagIntercept(true);
                 break;
         }
 
-        return mTouchHelper.isTagIntercept();
+        return mTagHolder.isTagIntercept();
     }
 
     /**
@@ -172,82 +108,63 @@ public class FGestureManager
         switch (event.getAction())
         {
             case MotionEvent.ACTION_DOWN:
-                return mCallback.consumeDownEvent(event);
+                return mCallback.onEventActionDown(event);
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-                mCallback.onConsumeEventFinish(event, getVelocityTracker());
-                reset();
+                reset(event);
                 break;
             default:
-                if (mTouchHelper.isTagConsume())
+                if (mTagHolder.isTagConsume())
                 {
-                    final boolean consume = mCallback.onConsumeEvent(event);
-                    mTouchHelper.setTagConsume(consume);
+                    final boolean consume = mCallback.onEventConsume(event);
+                    mTagHolder.setTagConsume(consume);
 
+                    // 标识消费过事件
                     if (consume)
-                    {
                         mHasConsumeEvent = true;
-                    }
                 } else
                 {
-                    final boolean shouldConsume = mCallback.shouldConsumeTouchEvent(event);
-                    mTouchHelper.setTagConsume(shouldConsume);
+                    mTagHolder.setTagConsume(mCallback.shouldConsumeEvent(event));
                 }
                 break;
         }
 
-        return mTouchHelper.isTagConsume();
+        return mTagHolder.isTagConsume();
     }
 
     public abstract static class Callback
     {
         /**
-         * 是否开始拦截事件({@link #onInterceptTouchEvent(MotionEvent)}方法触发)
+         * 是否开始拦截事件(由{@link #onInterceptTouchEvent(MotionEvent)}方法触发)
          *
          * @param event
          * @return
          */
-        public boolean shouldInterceptTouchEvent(MotionEvent event)
+        public boolean shouldInterceptEvent(MotionEvent event)
         {
             return false;
         }
 
         /**
-         * 是否需要拦截发生变化
-         *
-         * @param tagIntercept
-         */
-        public void onTagInterceptChanged(boolean tagIntercept)
-        {
-        }
-
-        /**
-         * 是否需要消费按下事件，只有此方法返回true，才有后续的移动事件，默认返回true
+         * 是否消费{@link MotionEvent#ACTION_DOWN}事件(由{@link #onTouchEvent(MotionEvent)}方法触发)
+         * <br>
+         * 注意，只有此方法返回了true，才有后续的移动等事件，默认返回true
          *
          * @param event
          * @return
          */
-        public boolean consumeDownEvent(MotionEvent event)
+        public boolean onEventActionDown(MotionEvent event)
         {
             return true;
         }
 
         /**
-         * 是否开始消费事件
+         * 是否开始消费事件(由{@link #onTouchEvent(MotionEvent)}方法触发)
          *
          * @param event
          * @return
          */
-        public abstract boolean shouldConsumeTouchEvent(MotionEvent event);
-
-        /**
-         * 是否需要消费发生变化
-         *
-         * @param tagConsume
-         */
-        public void onTagConsumeChanged(boolean tagConsume)
-        {
-        }
+        public abstract boolean shouldConsumeEvent(MotionEvent event);
 
         /**
          * 事件回调
@@ -255,14 +172,15 @@ public class FGestureManager
          * @param event
          * @return
          */
-        public abstract boolean onConsumeEvent(MotionEvent event);
+        public abstract boolean onEventConsume(MotionEvent event);
 
         /**
-         * 事件结束回调，收到{@link MotionEvent#ACTION_UP}或者{@link MotionEvent#ACTION_CANCEL}
+         * 事件结束({@link MotionEvent#ACTION_UP}或者{@link MotionEvent#ACTION_CANCEL})
          *
+         * @param hasConsumeEvent 本次按下到结束的过程中{@link #onEventConsume(MotionEvent)}方法是否消费过事件
+         * @param velocityTracker 这里返回的对象还未进行速率计算，如果要获得速率需要先进行计算{@link VelocityTracker#computeCurrentVelocity(int)}
          * @param event
-         * @param velocityTracker
          */
-        public abstract void onConsumeEventFinish(MotionEvent event, VelocityTracker velocityTracker);
+        public abstract void onEventFinish(boolean hasConsumeEvent, VelocityTracker velocityTracker, MotionEvent event);
     }
 }

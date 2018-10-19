@@ -1,24 +1,15 @@
-/*
- * Copyright (C) 2017 zhengjun, fanwe (http://www.fanwe.com)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package cn.linhome.lib.gesture;
 
+import android.content.Context;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.view.ViewParent;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 触摸事件处理帮助类<br>
@@ -27,31 +18,14 @@ public class FTouchHelper
 {
     private boolean mIsDebug;
 
-    /**
-     * 最后一次ACTION_DOWN事件
-     */
-    public static final int EVENT_DOWN = 0;
-    /**
-     * 当前事件的上一次事件
-     */
-    public static final int EVENT_LAST = 1;
-
     private float mCurrentX;
     private float mCurrentY;
+
     private float mLastX;
     private float mLastY;
 
     private float mDownX;
     private float mDownY;
-
-    private float mMoveX;
-    private float mMoveY;
-
-    private float mUpX;
-    private float mUpY;
-
-    private float mCancelX;
-    private float mCancelY;
 
     public void setDebug(boolean debug)
     {
@@ -71,26 +45,11 @@ public class FTouchHelper
         mCurrentX = ev.getRawX();
         mCurrentY = ev.getRawY();
 
-        switch (ev.getAction())
+        final int aciton = ev.getAction();
+        if (aciton == MotionEvent.ACTION_DOWN)
         {
-            case MotionEvent.ACTION_DOWN:
-                mDownX = mCurrentX;
-                mDownY = mCurrentY;
-                break;
-            case MotionEvent.ACTION_MOVE:
-                mMoveX = mCurrentX;
-                mMoveY = mCurrentY;
-                break;
-            case MotionEvent.ACTION_UP:
-                mUpX = mCurrentX;
-                mUpY = mCurrentY;
-                break;
-            case MotionEvent.ACTION_CANCEL:
-                mCancelX = mCurrentX;
-                mCancelY = mCurrentY;
-                break;
-            default:
-                break;
+            mDownX = mCurrentX;
+            mDownY = mCurrentY;
         }
 
         if (mIsDebug)
@@ -130,215 +89,168 @@ public class FTouchHelper
         return mDownY;
     }
 
-    public float getMoveX()
-    {
-        return mMoveX;
-    }
+    //---------- Delta Start ----------
 
-    public float getMoveY()
+    /**
+     * 返回当前事件和上一次事件之间的x轴方向增量
+     *
+     * @return
+     */
+    public float getDeltaX()
     {
-        return mMoveY;
-    }
-
-    public float getUpX()
-    {
-        return mUpX;
-    }
-
-    public float getUpY()
-    {
-        return mUpY;
-    }
-
-    public float getCancelX()
-    {
-        return mCancelX;
-    }
-
-    public float getCancelY()
-    {
-        return mCancelY;
+        return mCurrentX - mLastX;
     }
 
     /**
-     * 返回当前事件和指定事件之间的x轴方向增量
-     *
-     * @param event {@link #EVENT_DOWN} {@link #EVENT_LAST}
-     * @return
+     * 返回当前事件和上一次事件之间的y轴方向增量
      */
-    public float getDeltaXFrom(int event)
+    public float getDeltaY()
     {
-        switch (event)
-        {
-            case EVENT_DOWN:
-                return mCurrentX - mDownX;
-            case EVENT_LAST:
-                return mCurrentX - mLastX;
-            default:
-                return 0;
-        }
+        return mCurrentY - mLastY;
     }
 
     /**
-     * 返回当前事件和指定事件之间的y轴方向增量
+     * 返回当前事件和{@link MotionEvent#ACTION_DOWN}事件之间的x轴方向增量
      *
-     * @param event {@link #EVENT_DOWN} {@link #EVENT_LAST}
      * @return
      */
-    public float getDeltaYFrom(int event)
+    public float getDeltaXFromDown()
     {
-        switch (event)
-        {
-            case EVENT_DOWN:
-                return mCurrentY - mDownY;
-            case EVENT_LAST:
-                return mCurrentY - mLastY;
-            default:
-                return 0;
-        }
+        return mCurrentX - mDownX;
     }
 
     /**
-     * 返回当前事件和指定事件之间的x轴方向夹角
+     * 返回当前事件和{@link MotionEvent#ACTION_DOWN}事件之间的y轴方向增量
      *
-     * @param event {@link #EVENT_DOWN} {@link #EVENT_LAST}
      * @return
      */
-    public double getDegreeXFrom(int event)
+    public float getDeltaYFromDown()
     {
-        final float dx = getDeltaXFrom(event);
+        return mCurrentY - mDownY;
+    }
+
+    //---------- Delta End ----------
+
+
+    //---------- Degree Start ----------
+
+    /**
+     * 返回当前事件和上一次事件之间的x轴方向夹角
+     *
+     * @return
+     */
+    public double getDegreeX()
+    {
+        final float dx = getDeltaX();
         if (dx == 0)
-        {
             return 0;
-        }
-        final float dy = getDeltaYFrom(event);
+
+        final float dy = getDeltaY();
         final float angle = Math.abs(dy) / Math.abs(dx);
         return Math.toDegrees(Math.atan(angle));
     }
 
     /**
-     * 返回当前事件和指定事件之间的y轴方向夹角
+     * 返回当前事件和上一次事件之间的y轴方向夹角
      *
-     * @param event {@link #EVENT_DOWN} {@link #EVENT_LAST}
      * @return
      */
-    public double getDegreeYFrom(int event)
+    public double getDegreeY()
     {
-        final float dy = getDeltaYFrom(event);
+        final float dy = getDeltaY();
         if (dy == 0)
-        {
             return 0;
-        }
-        final float dx = getDeltaXFrom(event);
+
+        final float dx = getDeltaX();
         final float angle = Math.abs(dx) / Math.abs(dy);
         return Math.toDegrees(Math.atan(angle));
     }
 
     /**
-     * 返回当前事件相对于指定事件是否向左移动
+     * 返回当前事件和{@link MotionEvent#ACTION_DOWN}事件之间的x轴方向夹角
      *
-     * @param event {@link #EVENT_DOWN} {@link #EVENT_LAST}
      * @return
      */
-    public boolean isMoveLeftFrom(int event)
+    public double getDegreeXFromDown()
     {
-        return getDeltaXFrom(event) < 0;
+        final float dx = getDeltaXFromDown();
+        if (dx == 0)
+            return 0;
+
+        final float dy = getDeltaYFromDown();
+        final float angle = Math.abs(dy) / Math.abs(dx);
+        return Math.toDegrees(Math.atan(angle));
     }
 
     /**
-     * 返回当前事件相对于指定事件是否向上移动
+     * 返回当前事件和{@link MotionEvent#ACTION_DOWN}事件之间的y轴方向夹角
      *
-     * @param event {@link #EVENT_DOWN} {@link #EVENT_LAST}
      * @return
      */
-    public boolean isMoveTopFrom(int event)
+    public double getDegreeYFromDown()
     {
-        return getDeltaYFrom(event) < 0;
+        final float dy = getDeltaYFromDown();
+        if (dy == 0)
+            return 0;
+
+        final float dx = getDeltaXFromDown();
+        final float angle = Math.abs(dx) / Math.abs(dy);
+        return Math.toDegrees(Math.atan(angle));
     }
 
-    /**
-     * 返回当前事件相对于指定事件是否向右移动
-     *
-     * @param event {@link #EVENT_DOWN} {@link #EVENT_LAST}
-     * @return
-     */
-    public boolean isMoveRightFrom(int event)
-    {
-        return getDeltaXFrom(event) > 0;
-    }
+    //---------- Degree End ----------
+
 
     /**
-     * 返回当前事件相对于指定事件是否向下移动
+     * 是否是点击事件
      *
-     * @param event {@link #EVENT_DOWN} {@link #EVENT_LAST}
+     * @param event
+     * @param context
      * @return
      */
-    public boolean isMoveBottomFrom(int event)
+    public boolean isClick(MotionEvent event, Context context)
     {
-        return getDeltaYFrom(event) > 0;
-    }
-
-    /**
-     * 根据条件返回合法的x方向增量
-     *
-     * @param currentX 当前x
-     * @param minX     最小x
-     * @param maxX     最大x
-     * @param dx       x方向将要叠加的增量
-     * @return
-     */
-    public int getLegalDeltaX(int currentX, int minX, int maxX, int dx)
-    {
-        final int future = currentX + dx;
-        if (isMoveLeftFrom(EVENT_LAST))
+        if (event.getAction() == MotionEvent.ACTION_UP)
         {
-            //如果向左拖动
-            if (future < minX)
-            {
-                dx += (minX - future);
-            }
-        } else if (isMoveRightFrom(EVENT_LAST))
-        {
-            //如果向右拖动
-            if (future > maxX)
-            {
-                dx -= (future - maxX);
-            }
+            final long clickTimeout = ViewConfiguration.getPressedStateDuration() + ViewConfiguration.getTapTimeout();
+            final int touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+
+            final long duration = event.getEventTime() - event.getDownTime();
+            final int dx = (int) getDeltaXFromDown();
+            final int dy = (int) getDeltaYFromDown();
+
+            if (duration < clickTimeout && dx < touchSlop && dy < touchSlop)
+                return true;
         }
-        return dx;
-    }
-
-    /**
-     * 根据条件返回合法的y方向增量
-     *
-     * @param currentY 当前y
-     * @param minY     最小y
-     * @param maxY     最大y
-     * @param dy       y方向将要叠加的增量
-     * @return
-     */
-    public int getLegalDeltaY(int currentY, int minY, int maxY, int dy)
-    {
-        final int future = currentY + dy;
-        if (isMoveTopFrom(EVENT_LAST))
-        {
-            //如果向上拖动
-            if (future < minY)
-            {
-                dy += (minY - future);
-            }
-        } else if (isMoveBottomFrom(EVENT_LAST))
-        {
-            //如果向下拖动
-            if (future > maxY)
-            {
-                dy -= (future - maxY);
-            }
-        }
-        return dy;
+        return false;
     }
 
     //----------static method start----------
+
+    /**
+     * 返回合理的增量
+     *
+     * @param current 当前值
+     * @param min     最小值
+     * @param max     最大值
+     * @param delta   增量
+     * @return
+     */
+    public static int getLegalDelta(int current, int min, int max, int delta)
+    {
+        if (delta == 0)
+            return 0;
+
+        final int future = current + delta;
+        if (future < min)
+        {
+            delta += (min - future);
+        } else if (future > max)
+        {
+            delta += (max - future);
+        }
+        return delta;
+    }
 
     /**
      * 是否请求当前view的父view不要拦截事件
@@ -348,12 +260,135 @@ public class FTouchHelper
      */
     public static void requestDisallowInterceptTouchEvent(View view, boolean disallowIntercept)
     {
-        ViewParent parent = view.getParent();
-        if (parent == null)
+        final ViewParent parent = view.getParent();
+        if (parent != null)
+            parent.requestDisallowInterceptTouchEvent(disallowIntercept);
+    }
+
+    /**
+     * view是否处于某个坐标点下面，相对父布局的坐标
+     *
+     * @param view
+     * @param x
+     * @param y
+     * @return
+     */
+    public static boolean isViewUnder(View view, int x, int y)
+    {
+        return x >= view.getLeft() && x < view.getRight()
+                && y >= view.getTop() && y < view.getBottom();
+    }
+
+    /**
+     * view是否处于某个坐标点下面，相对屏幕的坐标
+     *
+     * @param view
+     * @param x
+     * @param y
+     * @return
+     */
+    public static boolean isViewUnderScreen(View view, int x, int y)
+    {
+        final int[] location = new int[2];
+        view.getLocationOnScreen(location);
+        return x >= location[0] && x < location[0] + view.getWidth()
+                && y >= location[1] && y < location[1] + view.getHeight();
+    }
+
+    /**
+     * 找到parent中处于指定坐标下最顶部的child
+     *
+     * @param parent
+     * @param x
+     * @param y
+     * @return
+     */
+    public static List<View> findChildrenUnder(ViewGroup parent, int x, int y)
+    {
+        final List<View> list = new ArrayList<>(2);
+
+        final int count = parent.getChildCount();
+        for (int i = count - 1; i >= 0; i--)
         {
-            return;
+            final View child = parent.getChildAt(i);
+            if (isViewUnder(child, x, y))
+            {
+                list.add(child);
+            }
         }
-        parent.requestDisallowInterceptTouchEvent(disallowIntercept);
+        return list;
+    }
+
+    /**
+     * 返回child和parent左边对齐时候，child的left
+     *
+     * @param parent
+     * @param child
+     * @param margin
+     * @return
+     */
+    public static int getLeftAlignParentLeft(ViewGroup parent, View child, boolean margin)
+    {
+        int align = parent.getPaddingLeft();
+        if (margin && child.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)
+        {
+            align += ((ViewGroup.MarginLayoutParams) child.getLayoutParams()).leftMargin;
+        }
+        return align;
+    }
+
+    /**
+     * 返回child和parent右边对齐时候，child的left
+     *
+     * @param parent
+     * @param child
+     * @param margin
+     * @return
+     */
+    public static int getLeftAlignParentRight(ViewGroup parent, View child, boolean margin)
+    {
+        int align = parent.getWidth() - parent.getPaddingRight() - child.getWidth();
+        if (margin && child.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)
+        {
+            align -= ((ViewGroup.MarginLayoutParams) child.getLayoutParams()).rightMargin;
+        }
+        return align;
+    }
+
+    /**
+     * 返回child和parent顶部对齐时候，child的top
+     *
+     * @param parent
+     * @param child
+     * @param margin
+     * @return
+     */
+    public static int getTopAlignParentTop(ViewGroup parent, View child, boolean margin)
+    {
+        int align = parent.getPaddingTop();
+        if (margin && child.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)
+        {
+            align += ((ViewGroup.MarginLayoutParams) child.getLayoutParams()).topMargin;
+        }
+        return align;
+    }
+
+    /**
+     * 返回child和parent底部对齐时候，child的top
+     *
+     * @param parent
+     * @param child
+     * @param margin
+     * @return
+     */
+    public static int getTopAlignParentBottom(ViewGroup parent, View child, boolean margin)
+    {
+        int align = parent.getHeight() - parent.getPaddingTop() - child.getHeight();
+        if (margin && child.getLayoutParams() instanceof ViewGroup.MarginLayoutParams)
+        {
+            align -= ((ViewGroup.MarginLayoutParams) child.getLayoutParams()).bottomMargin;
+        }
+        return align;
     }
 
     /**
@@ -406,13 +441,13 @@ public class FTouchHelper
     {
         StringBuilder sb = new StringBuilder("\r\n")
                 .append("Down:").append(mDownX).append(",").append(mDownY).append("\r\n")
-                .append("Move:").append(mMoveX).append(",").append(mMoveY).append("\r\n")
+                .append("Current:").append(mCurrentX).append(",").append(mCurrentY).append("\r\n")
 
-                .append("Delta from down:").append(getDeltaXFrom(EVENT_DOWN)).append(",").append(getDeltaYFrom(EVENT_DOWN)).append("\r\n")
-                .append("Delta from last:").append(getDeltaXFrom(EVENT_LAST)).append(",").append(getDeltaYFrom(EVENT_LAST)).append("\r\n")
+                .append("Delta from down:").append(getDeltaXFromDown()).append(",").append(getDeltaYFromDown()).append("\r\n")
+                .append("Delta from last:").append(getDeltaX()).append(",").append(getDeltaY()).append("\r\n")
 
-                .append("Degree from down:").append(getDegreeXFrom(EVENT_DOWN)).append(",").append(getDegreeYFrom(EVENT_DOWN)).append("\r\n")
-                .append("Degree from last:").append(getDegreeXFrom(EVENT_LAST)).append(",").append(getDegreeYFrom(EVENT_LAST)).append("\r\n");
+                .append("Degree from down:").append(getDegreeXFromDown()).append(",").append(getDegreeYFromDown()).append("\r\n")
+                .append("Degree from last:").append(getDegreeX()).append(",").append(getDegreeY()).append("\r\n");
         return sb;
     }
 }
