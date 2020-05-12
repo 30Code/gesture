@@ -4,7 +4,10 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/gesture.iml" filepath="$PROJECT_DIR$/gesture.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app/gesture-app.iml" filepath="$PROJECT_DIR$/app/gesture-app.iml" group="gesture/app" />
+      <module fileurl="file://$PROJECT_DIR$/lib/gesture-lib.iml" filepath="$PROJECT_DIR$/lib/gesture-lib.iml" group="gesture/lib" />
       <module fileurl="file://$PROJECT_DIR$/lib/lib.iml" filepath="$PROJECT_DIR$/lib/lib.iml" />
+      <module fileurl="file://$PROJECT_DIR$/mycode-gesture.iml" filepath="$PROJECT_DIR$/mycode-gesture.iml" group="gesture" />
     </modules>
   </component>
 </project>
